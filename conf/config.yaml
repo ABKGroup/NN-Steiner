@@ -1,0 +1,101 @@
+hydra:
+  job:
+    chdir: true
+flow: 
+  # - plot
+  # - data_gen
+  # - train
+  # - eval
+  # - solve
+  # - geo_exp
+  - nn_exp
+  # - mst_exp
+  # - refine
+quadtree:
+  m: 15
+  kb: 4
+  bbox:
+    width: 10000
+    height: 10000
+  level: -1
+model:
+  type: mlp
+  emb_size: 16
+  hidden_size: 4096
+  dropout: 0.1
+  device: cuda:0
+  precision: 32
+plot:
+  data: points/point2000_10000x10000-mix-normal-100-pt/point2000_10000x10000-mix-normal-1.txt
+  fst: 1
+  output:
+    # - quadtree
+    # - golden
+    # - adapted
+    - terminals
+data_gen:
+  seed: 42
+  batch: 100
+  num_points: 5000
+  x_range: 40000
+  y_range: 40000
+  x_stdev: 6000
+  y_stdev: 6000
+  level: -1
+  dist: mix-normal
+  output: pt
+  type: mlp
+  precision: 32
+  fst: 1
+train:
+  seed: 42
+  train_set: data/level3_100x100-240-tensor
+  val_set: data/level3_100x100-120-tensor
+  test_set: data/level3_100x100-100-tensor
+  checkpoint:
+  epochs: 2
+  max_no_update: 100
+  val_save: true
+  lr: 1e-4
+  portal_weight: 15
+  batch_size: 60
+  val_batch_size: 30
+  test_batch_size: 100
+  eval: 2
+  profile: false
+eval:
+  testcase: points/proto/point100_100x100_15_.txt
+  model: models/m=7_kb=4.pt
+  plot: false
+  k: 10
+  fst: 1
+solve:
+  testcase: points/level3_100x100-100-pt/level3_100x100-1.txt
+  model: models/m=7_kb=4.pt
+  plot: false
+  k: 10
+  fst: 1
+geo_exp:
+  test_set: points/point100_100x100-100-pt/
+  fst: 1
+  output: exp_out/100_100x100
+snapped_exp:
+  test_set: points/point100_100x100-100-pt/
+  k: 10
+  fst: 1
+  output: exp_out/100_100x100
+nn_exp:
+  test_set: points/point100_10000x10000-uniform-100-pt/
+  model: models/m=15_kb=4.pt
+  k: 10
+  fst: 1
+  output: exp_out/100_10000x10000-uniform.txt
+mst_exp:
+  test_set: points/point1000_1000x1000-100-pt/
+  output: exp_out/1000_1000x1000
+refine:
+  point_dir: points/point50_10000x10000-100-pt/
+  tree_dir: flute_results/flute50_10000x10000/
+  k: 10
+  fst: 1
+  output: exp_out/50_10000x10000-flute

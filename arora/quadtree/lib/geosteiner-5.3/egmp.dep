@@ -1,0 +1,3 @@
+egmp.o egmp.lo egmp.dep : egmp.c egmp.h config.h logic.h costextension.h gsttypes.h efst.h \
+ geomtypes.h point.h fatal.h memory.h metric.h parmblk.h parmdefs.h \
+ steiner.h bitmaskmacros.h

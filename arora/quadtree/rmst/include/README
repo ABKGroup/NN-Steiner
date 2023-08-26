@@ -1,0 +1,161 @@
+
+*******************************************************
+RMST-Pack: Rectilinear Minimum Spanning Tree Algorithms
+*******************************************************
+
+Authors:       Prof. Andrew B. Kahng         -- abk@cs.ucla.edu 
+               Dr. Ion Mandoiu               -- mandoiu@cc.gatech.edu
+
+Contributors:  Dr. Lou Scheffer              -- lou@cadence.com
+
+
+
+PACKAGE CONTENT
+---------------
+
+This software package bundles implementations of three algorithms for
+computing rectilinear minimum spanning trees (RMSTs): 
+
+* A simple O(n^2) time implementation of Prim's (also called priority
+  first) algorithm for computing the minimum spanning tree (MST) of the
+  implicitly represented complete graph defined by terminals. 
+
+* An O(n*logn) time algorithm that first computes octant nearest
+  neighbors for each terminal using the elegant divide-and-conquer 
+  algorithm of Guibas and Stolfi, then finds the MST of this graph 
+  using a binary-heap implementation of Prim's algorithm. 
+
+* An RMST code contributed by Dr. Lou Scheffer combining Prim's
+  algorithm with on-the-fly computation of the octant nearest 
+  neighbors via quad-tree based rectangular range searches.
+
+
+INSTANCE GENERATOR USAGE
+------------------------
+
+gen [-terminals N] [-seed N]
+ 
+ -terminals N or -t N	: generate instance with N terminals  [DEFAULT=0]
+ -seed N      or -s N	: use seed N o initialize the internal random 
+			  number generator            [DEFAULT=1]
+
+The instance is produced to stdout, in the following format
+
+NUM_TERMS
+x(1) y(1) 
+x(2) y(2) 
+..... 
+x(NUM_TERMS) y(NUM_TERMS)
+
+Terminals are in general position (no two terminals share the same x-
+or y-coordinate), and have integer coordinates between 0 and 1000000. 
+
+
+RMST CODE USAGE
+---------------
+
+rmst [-prim|-guibas|-scheffer] [-length] [-tree] [-iterations N]
+
+ -prim     or -p	: use the O(n^2) Prim implementation  [DEFAULT]
+ -guibas   or -g	: use the O(n*log(n)) Guibas-Stolfi algorithm
+ -scheffer or -s 	: use Scheffer's algorithm
+ -length   or -l	: print the length of the MST [DEFAULT=don't print]
+ -tree     or -t	: print tree edges            [DEFAULT=don't print]
+ -iterations N or -i N	: report the runtime average for N runs on 
+                          the same instance (used for accurate timing 
+			  on very small instances)    [DEFAULT=1]
+
+Terminals are read from stdin in the above format and output is
+produced to stdout. 
+
+FILE LIST
+---------
+
+Makefile	: makefile
+README		: this file
+dist.c		: Manhattan distance routines
+dist.h
+err.c		: Error handling routines
+err.h
+gen.c		: RMST instance generator
+global.h	: global type declarations
+heap.c		: binary-heap routines
+heap.h
+main.c		: main file
+mst1.c		: O(n^2) Prim
+mst1.h
+mst2.c		: binary-heap Prim on nearest-neighbor graph
+mst2.h
+mst8.c		: binary-heap Prim w/ on-the-fly computation of neighbors
+mst8.h
+neighbors.c	: O(n log(n)) divide-and-conquer octant nearest-neighbors
+neighbors.h
+sd2.c		: quad-tree based rectangular range search routines
+sd2.h
+unixtimer.c	: low-level Unix interval timers
+unixtimer.h
+
+Also included, sample imput and output files: 
+
+sample.in
+sample.out_guibas
+sample.out_prim
+sample.out_scheffer
+
+KNOWN BUGS
+----------
+
+Dr. Scheffer's code produces slightly sub-optimal results for very large 
+instances (50,000 terminals and up). Tree lengths for 10 random instances 
+with 50,000, 100,000, and 500,000 terminals are as follows:
+
+
+     50,000 terminals
+
+RMST      Scheffer  % increase
+-----------------------------
+181146384 181149754 0.001860%
+180952544 180955173 0.001453%
+180742664 180742664 
+180443530 180443530 
+180607588 180607588 
+180687460 180687460 
+180561505 180561505 
+181242089 181244953 0.001580%
+181107549 181107549 
+180811362 180811362 
+
+     100,000 terminals
+
+RMST      Scheffer  % increase
+-----------------------------
+255478245 255479106 0.000337%
+255444553 255445225 0.000263%
+255683015 255683015 
+255668879 255668879 
+255200851 255201064 0.000083%
+255548143 255548143 
+256043290 256044661 0.000535%
+255682830 255682830 
+255638414 255638879 0.000182%
+255433637 255434291 0.000256%
+
+     500,000 terminals
+
+RMST      Scheffer  % increase
+-----------------------------
+571262355 571265471 0.000545%
+571262501 571263608 0.000194%
+571033921 571037140 0.000564%
+571187838 571191075 0.000567%
+570699194 570705374 0.001083%
+571196622 571201974 0.000937%
+571363460 571365928 0.000432%
+570869532 570874507 0.000871%
+571316476 571319976 0.000613%
+570714909 570718795 0.000681%
+
+__________________________________________________________________________
+
+Released Mon Jun 4, 2001.
+
