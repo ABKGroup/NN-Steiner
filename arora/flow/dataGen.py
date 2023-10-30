@@ -15,11 +15,18 @@ from torch import Tensor
 from tqdm import tqdm
 
 from arora.data import Transform, get_transform
-from arora.points import PointGen, get_level_quadtree, get_pointGen, write_points
+from arora.points import (
+    PointGen,
+    SimpleCell,
+    SimpleQuadTree,
+    get_pointGen,
+    get_struct_quadtree,
+    write_points,
+)
 from arora.quadtree import QuadTree, QuadTreeData
 from arora.utils import get_dtype
 
-from .utils import get_quadtree, get_quadtreedata
+from .utils import get_quadtree, get_quadtreedata, get_quadtree_like
 
 
 def make_name(data_args: Dict) -> str:
@@ -28,11 +35,27 @@ def make_name(data_args: Dict) -> str:
     y_range: int = data_args["y_range"]
     level: int = data_args["level"]
     dist: str = data_args["dist"]
+    constraint: str = data_args["constraint"]
+    num_trees: int = data_args["num_trees"]
 
-    if level == -1:
-        return f"point{num_points}_{x_range}x{y_range}-{dist}"
-    else:
+    if constraint == "batch":
+        return f"batch{num_trees}_{x_range}x{y_range}-{dist}"
+    elif constraint == "level":
         return f"level{level}_{x_range}x{y_range}-{dist}"
+    else:
+        return f"point{num_points}_{x_range}x{y_range}-{dist}"
+
+
+def simplify_quadtree(qt: QuadTree) -> SimpleQuadTree:
+    simple_qt: SimpleQuadTree = SimpleQuadTree()
+    for cell in qt.cells:
+        simple_qt.cells.append(
+            SimpleCell(
+                cell.bbox.x_min, cell.bbox.y_min, cell.bbox.x_max, cell.bbox.y_max
+            )
+        )
+        simple_qt.is_leaf.append(cell.is_leaf())
+    return simple_qt
 
 
 def dump_file(
@@ -77,27 +100,30 @@ def check_no_overlap(points: List[Tuple[int, int]]) -> None:
     assert len(point_set) == len(points)
 
 
-def worker(idx: int, data_args: Dict, quadtree_args: Dict, output_dir: str) -> QuadTree:
+def worker(
+    idx: int,
+    data_args: Dict,
+    quadtree_args: Dict,
+    output_dir: str,
+    tree: QuadTree | None,
+) -> QuadTree:
     # point generation
     point_gen: PointGen = get_pointGen(
         data_args["dist"], data_args, idx + data_args["seed"]
     )
     points: List[Tuple[int, int]] = point_gen.get_points(data_args["num_points"])
 
-    # make level quadtree
-    if data_args["level"] != -1:
-        points: List[Tuple[int, int]] = get_level_quadtree(
-            points,
-            data_args["x_range"],
-            data_args["y_range"],
-            data_args["level"],
-            quadtree_args["kb"],
+    # make struct quadtree
+    if tree is not None:
+        points: List[Tuple[int, int]] = get_struct_quadtree(
+            points, simplify_quadtree(tree), quadtree_args["kb"]
         )
-        # check quadtree shape
 
-    qt: QuadTree = get_quadtree(points, quadtree_args)
-    if data_args["level"] != -1:
-        qt.check_level(quadtree_args["level"])
+    if tree is not None:
+        qt: QuadTree = get_quadtree_like(points, tree)
+        assert QuadTree.is_isomorphic(qt, tree)
+    else:
+        qt: QuadTree = get_quadtree(points, quadtree_args)
 
     check_no_overlap(points)
     name: str = make_name(data_args)
@@ -120,8 +146,60 @@ def get_dir_type(data_type: str) -> str:
 def output_files(
     data_args: Dict, quadtree_args: Dict, dir_name: str, logger: logging.Logger
 ) -> None:
-    worker_list: List[Tuple[int, Dict, Dict, str]] = [
-        (i, copy.deepcopy(data_args), copy.deepcopy(quadtree_args), dir_name)
+    # build struct trees
+    if data_args["constraint"] is None:
+        trees: List[QuadTree | None] = [None]
+    elif data_args["constraint"] == "level":
+        simpl_qt: SimpleQuadTree = SimpleQuadTree.get_level_quadtree(
+            data_args["x_range"], data_args["y_range"], data_args["level"]
+        )
+        point_gen: PointGen = get_pointGen(
+                data_args["dist"], data_args, data_args["seed"]
+            )
+        points: List[Tuple[int, int]] = get_struct_quadtree(point_gen.get_points(data_args["num_points"]), simpl_qt, data_args["kb"])
+        qt: QuadTree = get_quadtree(points, quadtree_args)
+        trees: List[QuadTree | None] = [qt]
+    elif data_args["constraint"] == "batch":
+        num_trees: int = data_args["num_trees"]
+        assert num_trees > 0, f"invalid num_trees: {num_trees}"
+        assert data_args["batch"] % num_trees == 0, f"invalid num_trees: {num_trees}"
+
+        qts: List[QuadTree] = []
+        qts_count: List[int] = []
+
+        def is_isormorphic(qt: QuadTree) -> bool:
+            for qt_idx, qt_ in enumerate(qts):
+                if QuadTree.is_isomorphic(qt, qt_):
+                    qts_count[qt_idx] += 1
+                    return True
+            return False
+
+        while len(qts) < num_trees:
+            point_gen: PointGen = get_pointGen(
+                data_args["dist"], data_args, len(qts) + data_args["seed"]
+            )
+            points: List[Tuple[int, int]] = point_gen.get_points(
+                data_args["num_points"]
+            )
+            qt: QuadTree = get_quadtree(points, quadtree_args)
+            if not is_isormorphic(qt):
+                qts.append(qt)
+                qts_count.append(1)
+        logger.info(f"tree_count: {qts_count}, levels: {[qt.max_level for qt in qts]}")
+
+        trees: List[QuadTree | None] = [qt for qt in qts]
+    else:
+        assert False, f"invalid constraint: {data_args['constraint']}"
+
+    batch_size: int = data_args["batch"] // len(trees)
+    worker_list: List[Tuple[int, Dict, Dict, str, QuadTree | None]] = [
+        (
+            i,
+            copy.deepcopy(data_args),
+            copy.deepcopy(quadtree_args),
+            dir_name,
+            copy.deepcopy(trees[i // batch_size]),
+        )
         for i in range(data_args["batch"])
     ]
 
@@ -130,13 +208,13 @@ def output_files(
 
     # debug
     # qts: List[QuadTree] = []
-    # for (idx, data_args, quadtree_args, output_dir) in tqdm(worker_list):
-    #     qts.append(worker(idx, data_args, quadtree_args, output_dir))
+    # for idx, data_args, quadtree_args, output_dir, tree in tqdm(worker_list):
+    #     qts.append(worker(idx, data_args, quadtree_args, output_dir, tree))
 
-    if data_args["level"] != -1:
+    if data_args["constraint"] is not None:
         logging.info("checking...")
-        for qt in tqdm(qts):
-            assert QuadTree.isomorphic(qt, qts[0])
+        for (qt_idx, qt) in tqdm(enumerate(qts)):
+            assert QuadTree.is_isomorphic(qt, qts[(qt_idx // batch_size) * batch_size])
 
     points_num: List[int] = [len(qt.terminals) for qt in qts]
     mean: float = statistics.mean(points_num)

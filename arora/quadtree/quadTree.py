@@ -494,7 +494,7 @@ class QuadTree:
         assert level_count == level, [level_count, level]
 
     @staticmethod
-    def isomorphic(qt_a: QuadTree, qt_b: QuadTree) -> bool:
+    def is_isomorphic(qt_a: QuadTree, qt_b: QuadTree) -> bool:
         if len(qt_a.cells) != len(qt_b.cells):
             return False
         for cell_a, cell_b in zip(qt_a.cells, qt_b.cells):
@@ -518,6 +518,34 @@ class QuadTree:
             ret.extend(QuadTree.clustering_Osquare(idx_list, qts, max_size))
         return ret
 
+    def _clean_terminals(self) -> None:
+        self.terminals = []
+        self.terminal2cell = []
+        for cell in self.cells:
+            cell.terminals_id = []
+
+    def _add_terminals(self, terminals: List[Terminal]) -> None:
+        self.terminals.extend(terminals)
+        self.terminal2cell.extend([-1 for _ in range(len(terminals))])
+
+        def add_terminals2cell(cell_id: int, terms_id: List[int]) -> None:
+            cell: Cell = self.cells[cell_id]
+            for term_id in terms_id:
+                terminal: Terminal = self.terminals[term_id]
+                if cell.bbox.contains(terminal):
+                    cell.terminals_id.append(term_id)
+                    self.terminal2cell[term_id] = cell_id
+
+            for child_id in cell.children:
+                add_terminals2cell(child_id, cell.terminals_id)
+
+            if cell.is_leaf():
+                assert len(cell.terminals_id) <= self.kb, [len(cell.terminals_id), self.kb]
+
+        add_terminals2cell(0, [i for i in range(len(terminals))])
+
+        assert -1 not in self.terminal2cell, self.terminal2cell
+
     @staticmethod
     def clustering_Osquare(
         idx_list: List[int], qts: List[QuadTree], max_size: int
@@ -528,7 +556,7 @@ class QuadTree:
             qt: QuadTree = qts[idx]
             for cluster in ret:
                 qt_ref: QuadTree = qts[cluster[0]]
-                if QuadTree.isomorphic(qt_ref, qt) and len(cluster) < max_size:
+                if QuadTree.is_isomorphic(qt_ref, qt) and len(cluster) < max_size:
                     cluster.append(idx)
                     break
             else:
@@ -544,6 +572,13 @@ class QuadTree:
             [qts[idx] for idx in idx_cluster] for idx_cluster in arg_cluster
         ]
 
+        return ret
+
+    @staticmethod
+    def tree_like(other: QuadTree, terminals: List[Terminal]) -> QuadTree:
+        ret: QuadTree = copy.deepcopy(other)
+        ret._clean_terminals()
+        ret._add_terminals(terminals)
         return ret
 
     # def _connect_portals(self) -> None:

@@ -3,20 +3,20 @@ hydra:
     chdir: true
 flow: 
   # - plot
-  # - data_gen
+  - data_gen
   # - train
   # - eval
   # - solve
   # - geo_exp
-  - nn_exp
+  # - nn_exp
   # - mst_exp
   # - refine
 quadtree:
   m: 15
   kb: 4
   bbox:
-    width: 10000
-    height: 10000
+    width: 100
+    height: 100
   level: -1
 model:
   type: mlp
@@ -35,17 +35,17 @@ plot:
     - terminals
 data_gen:
   seed: 42
-  batch: 100
-  num_points: 5000
-  x_range: 40000
-  y_range: 40000
-  x_stdev: 6000
-  y_stdev: 6000
+  batch: 140
+  num_points: 180
+  x_range: 100
+  y_range: 100
+  x_stdev: 30
+  y_stdev: 30
   constraint: batch
   level: -1
-  num_trees: 1
-  dist: mix-normal
-  output: pt
+  num_trees: 7
+  dist: uniform
+  output: tensor
   type: mlp
   precision: 32
   fst: 1
