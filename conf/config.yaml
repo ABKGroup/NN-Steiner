@@ -41,7 +41,9 @@ data_gen:
   y_range: 40000
   x_stdev: 6000
   y_stdev: 6000
+  constraint: batch
   level: -1
+  num_trees: 1
   dist: mix-normal
   output: pt
   type: mlp
