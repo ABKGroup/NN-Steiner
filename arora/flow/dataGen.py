@@ -26,7 +26,12 @@ from arora.points import (
 from arora.quadtree import QuadTree, QuadTreeData
 from arora.utils import get_dtype
 
-from .utils import get_quadtree, get_quadtreedata, get_quadtree_like
+from .utils import (
+    get_quadtree,
+    get_quadtree_like,
+    get_quadtreedata,
+    get_quadtreedata_like,
+)
 
 
 def make_name(data_args: Dict) -> str:
@@ -63,17 +68,30 @@ def dump_file(
     data_args: Dict,
     quadtree_args: Dict,
     file_name: str,
-) -> None:
+    qt: QuadTree | None = None,
+) -> Dict[str, Tensor] | None:
     output: str = data_args["output"]
     if output == "pickle":
-        datum: QuadTreeData = get_quadtreedata(points, quadtree_args, data_args["fst"])
+        if qt is not None:
+            datum: QuadTreeData = get_quadtreedata_like(points, qt, data_args["fst"])
+            assert QuadTree.is_isomorphic(qt, datum)
+        else:
+            datum: QuadTreeData = get_quadtreedata(
+                points, quadtree_args, data_args["fst"]
+            )
 
         # save datum
         pkl_name: str = f"{file_name}.pkl"
         with open(pkl_name, "wb") as f:
             pickle.dump(datum, f)
     elif output == "tensor":
-        datum: QuadTreeData = get_quadtreedata(points, quadtree_args, data_args["fst"])
+        if qt is not None:
+            datum: QuadTreeData = get_quadtreedata_like(points, qt, data_args["fst"])
+            assert QuadTree.is_isomorphic(qt, datum)
+        else:
+            datum: QuadTreeData = get_quadtreedata(
+                points, quadtree_args, data_args["fst"]
+            )
         tranform: Transform = get_transform(
             data_args["type"], get_dtype(data_args["precision"])
         )
@@ -85,6 +103,8 @@ def dump_file(
         pt_name: str = f"{file_name}.pt"
         with open(pt_name, "wb") as f:
             torch.save(tens, f)
+
+        return tens
 
     elif output == "pt":
         pt_name: str = f"{file_name}.txt"
@@ -106,7 +126,7 @@ def worker(
     quadtree_args: Dict,
     output_dir: str,
     tree: QuadTree | None,
-) -> QuadTree:
+) -> Tuple[int, Dict[str, Tensor] | None]:
     # point generation
     point_gen: PointGen = get_pointGen(
         data_args["dist"], data_args, idx + data_args["seed"]
@@ -119,17 +139,17 @@ def worker(
             points, simplify_quadtree(tree), quadtree_args["kb"]
         )
 
-    if tree is not None:
-        qt: QuadTree = get_quadtree_like(points, tree)
-        assert QuadTree.is_isomorphic(qt, tree)
-    else:
-        qt: QuadTree = get_quadtree(points, quadtree_args)
-
     check_no_overlap(points)
     name: str = make_name(data_args)
     file_name: str = os.path.join(output_dir, f"{name}-{idx}")
-    dump_file(points, data_args, quadtree_args, file_name)
-    return qt
+
+    if tree is not None:
+        dumped: Dict[str, Tensor] | None = dump_file(
+            points, data_args, quadtree_args, file_name, tree
+        )
+    else:
+        dumped = dump_file(points, data_args, quadtree_args, file_name)
+    return (len(points), dumped)
 
 
 def get_dir_type(data_type: str) -> str:
@@ -154,9 +174,11 @@ def output_files(
             data_args["x_range"], data_args["y_range"], data_args["level"]
         )
         point_gen: PointGen = get_pointGen(
-                data_args["dist"], data_args, data_args["seed"]
-            )
-        points: List[Tuple[int, int]] = get_struct_quadtree(point_gen.get_points(data_args["num_points"]), simpl_qt, data_args["kb"])
+            data_args["dist"], data_args, data_args["seed"]
+        )
+        points: List[Tuple[int, int]] = get_struct_quadtree(
+            point_gen.get_points(data_args["num_points"]), simpl_qt, data_args["kb"]
+        )
         qt: QuadTree = get_quadtree(points, quadtree_args)
         trees: List[QuadTree | None] = [qt]
     elif data_args["constraint"] == "batch":
@@ -198,25 +220,30 @@ def output_files(
             copy.deepcopy(data_args),
             copy.deepcopy(quadtree_args),
             dir_name,
-            copy.deepcopy(trees[i // batch_size]),
+            trees[i // batch_size],
         )
-        for i in range(data_args["batch"])
+        for i in tqdm(range(data_args["batch"]))
     ]
 
     with mp.Pool() as pool:
-        qts: List[QuadTree] = pool.starmap(worker, tqdm(worker_list))
+        rets: List[Tuple[int, Dict[str, Tensor]|None]] = pool.starmap(worker, tqdm(worker_list))
 
     # debug
-    # qts: List[QuadTree] = []
+    # rets: List[Tuple[QuadTree, Dict[str, Tensor] | None]] = []
     # for idx, data_args, quadtree_args, output_dir, tree in tqdm(worker_list):
-    #     qts.append(worker(idx, data_args, quadtree_args, output_dir, tree))
+        # rets.append(worker(idx, data_args, quadtree_args, output_dir, tree))
 
     if data_args["constraint"] is not None:
         logging.info("checking...")
-        for (qt_idx, qt) in tqdm(enumerate(qts)):
-            assert QuadTree.is_isomorphic(qt, qts[(qt_idx // batch_size) * batch_size])
+        for qt_idx, (_, dumped) in tqdm(enumerate(rets)):
+            qt_ref, dumped_ref = rets[(qt_idx // batch_size) * batch_size]
+            assert dumped is not None and dumped_ref is not None
+            assert torch.all(dumped["tree_struct"] == dumped_ref["tree_struct"]), [
+                dumped["tree_struct"],
+                dumped_ref["tree_struct"],
+            ]
 
-    points_num: List[int] = [len(qt.terminals) for qt in qts]
+    points_num: List[int] = [num_points for num_points, _ in rets]
     mean: float = statistics.mean(points_num)
     stdev: float = statistics.stdev(points_num)
 

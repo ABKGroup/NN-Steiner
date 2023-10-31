@@ -37,11 +37,13 @@ def get_quadtree(points: List[Tuple[int, int]], quadtree_args: Dict) -> QuadTree
     qt: QuadTree = QuadTree(terminals, bbox, quadtree_args)
     return qt
 
+
 def get_quadtree_like(points: List[Tuple[int, int]], qt: QuadTree) -> QuadTree:
     # get terminals
     terminals: List[Terminal] = Terminal.terminals_from_point(points)
 
     return QuadTree.tree_like(qt, terminals)
+
 
 def get_golden_stt(points: List[Tuple[int, int]], fst: int) -> SteinerTree:
     # get terminals
@@ -51,6 +53,17 @@ def get_golden_stt(points: List[Tuple[int, int]], fst: int) -> SteinerTree:
     stt: SteinerTree = geo.solve(terminals, fst)
 
     return stt
+
+
+def get_quadtreedata_like(
+    points: List[Tuple[int, int]], tree: QuadTree, fst: int
+) -> QuadTreeData:
+    # get terminals
+    terminals: List[Terminal] = Terminal.terminals_from_point(points)
+
+    stt: SteinerTree = get_golden_stt(points, fst)
+
+    return QuadTreeData.tree_like(tree, terminals, stt)
 
 
 def get_quadtreedata(

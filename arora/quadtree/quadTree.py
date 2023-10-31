@@ -540,7 +540,10 @@ class QuadTree:
                 add_terminals2cell(child_id, cell.terminals_id)
 
             if cell.is_leaf():
-                assert len(cell.terminals_id) <= self.kb, [len(cell.terminals_id), self.kb]
+                assert len(cell.terminals_id) <= self.kb, [
+                    len(cell.terminals_id),
+                    self.kb,
+                ]
 
         add_terminals2cell(0, [i for i in range(len(terminals))])
 

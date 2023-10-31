@@ -34,8 +34,8 @@ plot:
     # - adapted
     - terminals
 data_gen:
-  seed: 42
-  batch: 140
+  seed: 4200
+  batch: 1200
   num_points: 180
   x_range: 100
   y_range: 100
@@ -43,7 +43,7 @@ data_gen:
   y_stdev: 30
   constraint: batch
   level: -1
-  num_trees: 7
+  num_trees: 24
   dist: uniform
   output: tensor
   type: mlp
@@ -51,18 +51,18 @@ data_gen:
   fst: 1
 train:
   seed: 42
-  train_set: data/level3_100x100-240-tensor
-  val_set: data/level3_100x100-120-tensor
-  test_set: data/level3_100x100-100-tensor
+  train_set: data/batch24_100x100-uniform-1200-tensor
+  val_set: data/batch3_100x100-uniform-96-tensor
+  test_set: data/batch1_100x100-uniform-32-tensor
   checkpoint:
-  epochs: 2
-  max_no_update: 100
+  epochs: 10
+  max_no_update: 15
   val_save: true
   lr: 1e-4
   portal_weight: 15
-  batch_size: 60
-  val_batch_size: 30
-  test_batch_size: 100
+  batch_size: 50
+  val_batch_size: 32
+  test_batch_size: 32
   eval: 2
   profile: false
 eval:

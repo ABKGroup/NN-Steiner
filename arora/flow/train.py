@@ -28,7 +28,7 @@ def train(args: DictConfig) -> None:
 
     # get training data (load data, cluter, put into data loader)
     train_dir = os.path.join(hydra.utils.get_original_cwd(), args["train"]["train_set"])
-    train_files = get_files(train_dir)
+    train_files = get_files(train_dir, True)
     train_set: QuadTreeDataset = QuadTreeDataset(train_files)
     train_loader: DataLoader = DataLoader(
         train_set, collate_fn, args["train"]["batch_size"]
@@ -36,7 +36,7 @@ def train(args: DictConfig) -> None:
 
     # get validation data
     val_dir = os.path.join(hydra.utils.get_original_cwd(), args["train"]["val_set"])
-    val_files = get_files(val_dir)
+    val_files = get_files(val_dir, True)
     val_set: QuadTreeDataset = QuadTreeDataset(val_files)
     val_loader: DataLoader = DataLoader(
         val_set, collate_fn, args["train"]["val_batch_size"]
@@ -44,7 +44,7 @@ def train(args: DictConfig) -> None:
 
     # get test data
     test_dir = os.path.join(hydra.utils.get_original_cwd(), args["train"]["test_set"])
-    test_files = get_files(test_dir)
+    test_files = get_files(test_dir, True)
     test_set: QuadTreeDataset = QuadTreeDataset(test_files)
     test_loader: DataLoader = DataLoader(
         test_set, collate_fn, args["train"]["test_batch_size"]

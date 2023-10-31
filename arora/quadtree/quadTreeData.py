@@ -39,6 +39,10 @@ class QuadTreeData(QuadTree):
         stt: SteinerTree,
     ) -> None:
         super().__init__(terminals, bbox, args)
+
+        self._process_stt(stt)
+
+    def _process_stt(self, stt):
         self.golden_stt = stt
         self.stt = copy.deepcopy(stt)
 
@@ -194,3 +198,16 @@ class QuadTreeData(QuadTree):
     @staticmethod
     def clustering(qts: List[QuadTreeData], max_size: int) -> List[List[QuadTreeData]]:
         return QuadTree.clustering(qts, max_size)  # pyright: ignore
+
+    @staticmethod
+    def tree_like(
+        other: QuadTree, terminals: List[Terminal], stt: SteinerTree
+    ) -> QuadTreeData:
+        ret: QuadTreeData = QuadTreeData([], other.bbox, other.args, SteinerTree([]))
+        ret.cells = copy.deepcopy(other.cells)
+        ret.sides = copy.deepcopy(other.sides)
+        ret.portals = copy.deepcopy(other.portals)
+        ret._clean_terminals()
+        ret._add_terminals(terminals)
+        ret._process_stt(stt)
+        return ret

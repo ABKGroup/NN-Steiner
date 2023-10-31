@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
@@ -82,9 +83,19 @@ def plot_conf_matrix(golden: Tensor, predict: Tensor, path: str) -> None:
     plt.clf()
 
 
-def get_files(dir: str) -> List[str]:
+def extract_idx(input_string: str) -> int:
+    pattern_idx = r"(\d+).pt"
+    match = re.search(pattern_idx, input_string)
+    assert match is not None, f"invalid input string: {input_string}"
+    return int(match.group(1))
+
+
+def get_files(dir: str, sort_num: bool = False) -> List[str]:
     files: List[str] = os.listdir(dir)
-    files = sorted(files)
+    if sort_num:
+        files = sorted(files, key=extract_idx)
+    else:
+        files = sorted(files)
     files = [os.path.join(dir, file) for file in files]
 
     return files
