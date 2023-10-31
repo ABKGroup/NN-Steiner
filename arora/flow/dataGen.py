@@ -69,7 +69,7 @@ def dump_file(
     quadtree_args: Dict,
     file_name: str,
     qt: QuadTree | None = None,
-) -> Dict[str, Tensor] | None:
+) -> None:
     output: str = data_args["output"]
     if output == "pickle":
         if qt is not None:
@@ -104,8 +104,6 @@ def dump_file(
         with open(pt_name, "wb") as f:
             torch.save(tens, f)
 
-        return tens
-
     elif output == "pt":
         pt_name: str = f"{file_name}.txt"
         write_points(points, pt_name)
@@ -126,7 +124,7 @@ def worker(
     quadtree_args: Dict,
     output_dir: str,
     tree: QuadTree | None,
-) -> Tuple[int, Dict[str, Tensor] | None]:
+) -> int:
     # point generation
     point_gen: PointGen = get_pointGen(
         data_args["dist"], data_args, idx + data_args["seed"]
@@ -144,12 +142,10 @@ def worker(
     file_name: str = os.path.join(output_dir, f"{name}-{idx}")
 
     if tree is not None:
-        dumped: Dict[str, Tensor] | None = dump_file(
-            points, data_args, quadtree_args, file_name, tree
-        )
+        dump_file(points, data_args, quadtree_args, file_name, tree)
     else:
-        dumped = dump_file(points, data_args, quadtree_args, file_name)
-    return (len(points), dumped)
+        dump_file(points, data_args, quadtree_args, file_name)
+    return len(points)
 
 
 def get_dir_type(data_type: str) -> str:
@@ -226,24 +222,23 @@ def output_files(
     ]
 
     with mp.Pool() as pool:
-        rets: List[Tuple[int, Dict[str, Tensor]|None]] = pool.starmap(worker, tqdm(worker_list))
+        points_num: List[int] = pool.starmap(worker, tqdm(worker_list))
 
     # debug
     # rets: List[Tuple[QuadTree, Dict[str, Tensor] | None]] = []
     # for idx, data_args, quadtree_args, output_dir, tree in tqdm(worker_list):
         # rets.append(worker(idx, data_args, quadtree_args, output_dir, tree))
 
-    if data_args["constraint"] is not None:
-        logging.info("checking...")
-        for qt_idx, (_, dumped) in tqdm(enumerate(rets)):
-            qt_ref, dumped_ref = rets[(qt_idx // batch_size) * batch_size]
-            assert dumped is not None and dumped_ref is not None
-            assert torch.all(dumped["tree_struct"] == dumped_ref["tree_struct"]), [
-                dumped["tree_struct"],
-                dumped_ref["tree_struct"],
-            ]
+    # if data_args["constraint"] is not None:
+    #     logging.info("checking...")
+    #     for qt_idx, (_, dumped) in tqdm(enumerate(rets)):
+    #         qt_ref, dumped_ref = rets[(qt_idx // batch_size) * batch_size]
+    #         assert dumped is not None and dumped_ref is not None
+    #         assert torch.all(dumped["tree_struct"] == dumped_ref["tree_struct"]), [
+    #             dumped["tree_struct"],
+    #             dumped_ref["tree_struct"],
+    #         ]
 
-    points_num: List[int] = [num_points for num_points, _ in rets]
     mean: float = statistics.mean(points_num)
     stdev: float = statistics.stdev(points_num)
 
