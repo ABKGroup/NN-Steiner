@@ -57,7 +57,7 @@ def eval(args: DictConfig) -> None:
     )
     solver: NNSteiner = NNSteiner(nn_arora, transform, args["model"]["device"])
     (predict_tens, predict_stt, final_stt) = solver.solve(
-        data, args["eval"]["k"], args["eval"]["fst"]
+        data, args["eval"]["threshold"], args["eval"]["k"], args["eval"]["fst"]
     )
 
     # get acc

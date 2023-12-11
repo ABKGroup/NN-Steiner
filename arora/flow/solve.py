@@ -43,7 +43,7 @@ def solve(args: DictConfig) -> None:
     )
     solver: NNSteiner = NNSteiner(nn_arora, transform, args["model"]["device"])
     (_, predict_stt, final_stt) = solver.solve(
-        qt, args["solve"]["k"], args["solve"]["fst"]
+        qt, args["solve"]["threshold"], args["solve"]["k"], args["solve"]["fst"]
     )
 
     # cost

@@ -42,7 +42,7 @@ def nn_exp(args: DictConfig) -> None:
     start_time: float = time.time()
     for point_set in tqdm(points_set):
         qt: QuadTree = get_quadtree(point_set, args["quadtree"])
-        (_, _, final_stt) = solver.solve(qt, args["nn_exp"]["k"], args["nn_exp"]["fst"])
+        (_, _, final_stt) = solver.solve(qt, args["nn_exp"]["threshold"], args["nn_exp"]["k"], args["nn_exp"]["fst"])
         stts.append(final_stt)
     # qt: QuadTree = get_quadtree(points_set[1], args["quadtree"])
     # (_, _, final_stt) = solver.solve(qt,args["nn_exp"]["k"], args["nn_exp"]["fst"])

@@ -4,7 +4,7 @@ canvas=(10000 10000 10000 10000 10000 10000 10000 10000)
 m=15
 kb=4
 k=10
-model="m\=15_kb\=4-portal"
+set="m\=15_kb\=4-threshold\=0.95"
 model_path="models/m\=15_kb\=4.pt"
 device="cuda:0"
 
@@ -15,7 +15,7 @@ for i in "${!points[@]}"; do
     width=${canvas[$i]}
     set="${num}_${width}x${width}-$dist"
     test_set="points/point$set-100-pt"
-    output="exp_out/$set-$model"
+    output="exp_out/$set-$set"
     cmd="python -m arora flow=nn_exp \
     quadtree.m=$m quadtree.kb=$kb \
     model.device=$device nn_exp.model=$model_path \

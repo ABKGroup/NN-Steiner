@@ -44,3 +44,4 @@ arora/quadtree/rmst/build/
 .log/*
 outputs/
 data/*
+models/*.pt

@@ -49,7 +49,7 @@ class NNSteiner:
 
     @torch.no_grad()
     def solve(
-        self, qt: QuadTree, k: int, fst: int
+        self, qt: QuadTree, threshold: float, k: int, fst: int
     ) -> Tuple[Tensor, SteinerTree, SteinerTree]:
         inputs: Dict[str, Tensor] = {
             "tree_struct": self.transform.get_tree_struct(qt).to(self.device),
@@ -69,7 +69,7 @@ class NNSteiner:
         predict_tens = predict_tens.squeeze()
 
         # portal retrieval
-        feasible_portals: List[int] = self._feasible_portals(0.5, predict_tens)
+        feasible_portals: List[int] = self._feasible_portals(threshold, predict_tens)
 
         # ablation study
         # feasible_portals: List[int] = []
