@@ -475,7 +475,7 @@ class SteinerTree:
         """
         self.trim()
         self.round()
-        self.refine_leaves(k, fst)
+        # self.refine_leaves(k, fst)
         self.trim()
 
     def trim(self) -> None:

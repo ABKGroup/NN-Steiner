@@ -64,10 +64,10 @@ class NNSteiner:
             ),
         }
 
+        # ablation study comment out
         self.nn_arora.eval()
         predict_tens: Tensor = self.nn_arora(**inputs)
         predict_tens = predict_tens.squeeze()
-
         # portal retrieval
         feasible_portals: List[int] = self._feasible_portals(threshold, predict_tens)
 

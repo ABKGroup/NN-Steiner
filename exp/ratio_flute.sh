@@ -6,7 +6,7 @@ canvas=(10000 10000 10000 10000 10000 10000 10000 10000)
 dist="uniform"
 
 # comp="snapped"
-comp="m=15_kb=4-threshold=0.1-solved"
+comp="m=15_kb=4-threshold=0.95-cell-solved"
 # comp="flute-refined"
 # comp="golden"
 path="flute_out"
